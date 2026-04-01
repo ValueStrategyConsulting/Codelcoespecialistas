@@ -146,7 +146,8 @@ export const Procesos: React.FC = () => {
     { key: 'estado_documental', label: 'Documental', width: '100px' },
     { key: 'estado_evaluacion', label: 'Evaluaci\u00f3n', width: '100px' },
     { key: 'estado_general', label: 'Estado', width: '120px' },
-    { key: 'progreso', label: 'Progreso', width: '120px' },
+    { key: 'progreso', label: '% Avance', width: '120px' },
+    { key: 'observacion_control', label: 'Observaciones', width: '160px' },
   ];
 
   return (
@@ -270,45 +271,32 @@ export const Procesos: React.FC = () => {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-elevated)')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
-                <td style={{ padding: '10px', color: 'var(--text-muted)' }}>{p.id}</td>
-                <td style={{ padding: '10px', color: 'var(--text)', fontWeight: 500 }}>{p.nombre}</td>
-                <td style={{ padding: '10px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '12px' }}>
-                  {p.rut}
-                </td>
+                {/* ID */}
+                <td style={{ padding: '10px', color: 'var(--primary)', fontWeight: 600, fontFamily: 'monospace', fontSize: 12 }}>{p.id}</td>
+                {/* Cargo */}
                 <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>{p.cargo}</td>
+                {/* Candidato */}
+                <td style={{ padding: '10px', color: 'var(--text)', fontWeight: 500 }}>{p.nombre}</td>
+                {/* RUT */}
+                <td style={{ padding: '10px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 12 }}>{p.rut}</td>
+                {/* División */}
+                <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>{p.division || '\u2014'}</td>
+                {/* Especialista */}
                 <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>{p.especialista}</td>
+                {/* Categoría */}
                 <td style={{ padding: '10px' }}>
-                  <StatusBadge status={p.categoria} color={ESTADO_COLORS[p.estado_general] || 'var(--text-muted)'} />
+                  {p.categoria ? <StatusBadge status={p.categoria} color={p.categoria === 'Recomendado' ? 'var(--success)' : p.categoria === 'No Recomendado' ? 'var(--danger)' : 'var(--text-muted)'} /> : <span style={{ color: 'var(--text-muted)' }}>{'\u2014'}</span>}
                 </td>
-                <td style={{ padding: '10px' }}>
-                  <DocStatusBadge complete={p.estado_documental === 'COMPLETO'} />
-                </td>
-                <td style={{ padding: '10px' }}>
-                  <DocStatusBadge complete={p.estado_evaluacion === 'COMPLETA'} />
-                </td>
-                <td style={{ padding: '10px' }}>
-                  <DocStatusBadge complete={p.estado_entrevista === 'COMPLETA'} />
-                </td>
-                <td style={{ padding: '10px' }}>
-                  <DocStatusBadge complete={p.estado_cierre === 'CERRADO'} />
-                </td>
-                <td style={{ padding: '10px' }}>
-                  <EstadoGeneralBadge estado={p.estado_general} />
-                </td>
-                <td style={{ padding: '10px', minWidth: '100px' }}>
-                  <ProgressBar value={p.progreso} />
-                </td>
-                <td
-                  style={{
-                    padding: '10px',
-                    color: 'var(--text-muted)',
-                    maxWidth: '160px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                  title={p.observacion_control}
-                >
+                {/* Documental */}
+                <td style={{ padding: '10px' }}><DocStatusBadge complete={p.estado_documental === 'COMPLETO'} /></td>
+                {/* Evaluación */}
+                <td style={{ padding: '10px' }}><DocStatusBadge complete={p.estado_evaluacion === 'COMPLETA'} /></td>
+                {/* Estado */}
+                <td style={{ padding: '10px' }}><EstadoGeneralBadge estado={p.estado_general} /></td>
+                {/* % Avance */}
+                <td style={{ padding: '10px', minWidth: 100 }}><ProgressBar value={p.progreso} /></td>
+                {/* Observaciones */}
+                <td style={{ padding: '10px', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.observacion_control}>
                   {p.observacion_control || '\u2014'}
                 </td>
               </tr>
