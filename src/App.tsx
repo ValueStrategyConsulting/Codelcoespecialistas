@@ -9,12 +9,14 @@ import { Encuestas } from './pages/Encuestas';
 import { ChatPanel } from './components/chat/ChatPanel';
 
 export default function App() {
-  const { activePage, loadProcesos, loading, error } = useStore();
+  const { activePage, loadProcesos, startAutoRefresh, loading, error } = useStore();
   const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     loadProcesos();
-  }, [loadProcesos]);
+    const stopRefresh = startAutoRefresh();
+    return stopRefresh;
+  }, [loadProcesos, startAutoRefresh]);
 
   const renderPage = () => {
     switch (activePage) {
