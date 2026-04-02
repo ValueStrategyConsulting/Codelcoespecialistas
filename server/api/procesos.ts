@@ -22,13 +22,14 @@ const FIELDS = [
   'fldAbIU21JSlcWdEO', // Última modificación
   'fldGGIWOrl2XNFRxF', // Estado
   'fldLftMbv6EnJMDYG', // Estado Documentos
+  'fldyijp7KwS0jEQuT', // Plazo Máximo
 ];
 
 function computeEstadoGeneral(
   hasDocs: boolean,
   hasInforme: boolean,
   hasCheckFinal: boolean,
-  diasSinMov: number,
+  diasParaPlazo: number | null,
 ): string {
   let estado: string;
   if (hasCheckFinal) {
@@ -43,10 +44,10 @@ function computeEstadoGeneral(
     estado = 'POR_INICIAR';
   }
 
-  // Risk override
-  if (estado !== 'CERRADO') {
-    if (estado === 'POR_INICIAR' && diasSinMov > 10) estado = 'EN_RIESGO';
-    if (estado === 'EN_PROCESO' && diasSinMov > 20) estado = 'EN_RIESGO';
+  // Riesgo basado en plazo máximo
+  if (estado !== 'CERRADO' && diasParaPlazo !== null) {
+    if (diasParaPlazo <= 0) estado = 'EN_RIESGO';     // plazo vencido
+    else if (diasParaPlazo <= 5) estado = 'EN_RIESGO'; // quedan 5 días o menos
   }
 
   return estado;
@@ -73,6 +74,10 @@ export async function handler(_req: Request): Promise<Response> {
         const diasSinMov = fechaUltimoMov
           ? Math.floor((now - new Date(fechaUltimoMov).getTime()) / 86400000)
           : 0;
+        const plazoMaximo = f['Plazo Máximo'] || '';
+        const diasParaPlazo = plazoMaximo
+          ? Math.floor((new Date(plazoMaximo).getTime() - now) / 86400000)
+          : null;
 
         let progreso = 20;
         if (hasDocs) progreso += 25;
@@ -103,11 +108,13 @@ export async function handler(_req: Request): Promise<Response> {
           estado_evaluacion: hasInforme ? 'COMPLETA' : 'PENDIENTE',
           estado_entrevista: hasRespaldo ? 'COMPLETA' : 'PENDIENTE',
           estado_cierre: hasCheckFinal ? 'CERRADO' : 'PENDIENTE',
-          estado_general: computeEstadoGeneral(hasDocs, hasInforme, hasCheckFinal, diasSinMov),
+          estado_general: computeEstadoGeneral(hasDocs, hasInforme, hasCheckFinal, diasParaPlazo),
           progreso,
           dias_sin_movimiento: diasSinMov,
           fecha_inicio: fechaInicio,
           fecha_ultimo_movimiento: fechaUltimoMov,
+          plazo_maximo: plazoMaximo,
+          dias_para_plazo: diasParaPlazo,
           especialista: f['Especialista-1'] || '',
         };
       })

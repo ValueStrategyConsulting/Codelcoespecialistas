@@ -26,6 +26,8 @@ export interface Proceso {
   dias_sin_movimiento: number;
   fecha_inicio: string;
   fecha_ultimo_movimiento: string;
+  plazo_maximo: string;
+  dias_para_plazo: number | null;
   especialista: string;
 }
 

@@ -103,14 +103,14 @@ for (let i = 1; i < lines.length; i++) {
   const fechaUltimoMovimiento = (fechaUltimoMov > hoy ? hoy : fechaUltimoMov).toISOString().split('T')[0];
 
   const diasSinMovimiento = Math.floor((hoy.getTime() - new Date(fechaUltimoMovimiento).getTime()) / 86400000);
-  if (estado_general !== 'CERRADO' && (diasSinMovimiento > 15 || (!hasDocumentos && !hasInforme && observacion))) {
-    // Only override to EN_RIESGO if not already closed
-    if (estado_general === 'POR_INICIAR' && diasSinMovimiento > 10) {
-      estado_general = 'EN_RIESGO';
-    }
-    if (estado_general === 'EN_PROCESO' && diasSinMovimiento > 20) {
-      estado_general = 'EN_RIESGO';
-    }
+  // Simular plazo máximo: desde hoy -30 a +60 días para distribución realista
+  const diasOffsetPlazo = Math.floor(rng() * 90) - 30;
+  const plazoMaximo = new Date(hoy.getTime() + diasOffsetPlazo * 86400000).toISOString().split('T')[0];
+  const diasParaPlazo = diasOffsetPlazo;
+
+  // Riesgo basado en plazo máximo
+  if (estado_general !== 'CERRADO' && diasParaPlazo <= 5) {
+    estado_general = 'EN_RIESGO';
   }
 
   // Progress engine (0-100)
@@ -148,6 +148,8 @@ for (let i = 1; i < lines.length; i++) {
     dias_sin_movimiento: diasSinMovimiento,
     fecha_inicio: fechaInicio,
     fecha_ultimo_movimiento: fechaUltimoMovimiento,
+    plazo_maximo: plazoMaximo,
+    dias_para_plazo: diasParaPlazo,
     especialista,
   });
 }

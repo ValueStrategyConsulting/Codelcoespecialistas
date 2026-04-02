@@ -38,15 +38,17 @@ function hasAttachments(field: any): boolean {
   return Array.isArray(field) && field.length > 0;
 }
 
-function computeEstadoGeneral(hasDocs: boolean, hasInforme: boolean, hasCheck: boolean, dias: number): string {
+function computeEstadoGeneral(hasDocs: boolean, hasInforme: boolean, hasCheck: boolean, diasParaPlazo: number | null): string {
   let e = 'POR_INICIAR';
   if (hasCheck) e = 'CERRADO';
   else if (hasInforme) e = 'PENDIENTE_CIERRE';
-  else if (hasDocs) e = 'EN_EVALUACION';
+  else if (hasDocs && !hasInforme) e = 'EN_EVALUACION';
   else if (hasDocs) e = 'EN_PROCESO';
-  if (e !== 'CERRADO') {
-    if (e === 'POR_INICIAR' && dias > 10) e = 'EN_RIESGO';
-    if (e === 'EN_PROCESO' && dias > 20) e = 'EN_RIESGO';
+
+  // Riesgo basado en plazo máximo
+  if (e !== 'CERRADO' && diasParaPlazo !== null) {
+    if (diasParaPlazo <= 0) e = 'EN_RIESGO';       // plazo vencido
+    else if (diasParaPlazo <= 5) e = 'EN_RIESGO';   // quedan 5 días o menos
   }
   return e;
 }
@@ -104,7 +106,9 @@ export function devApiPlugin(): Plugin {
                 const hasInforme = hasAttachments(f['Informe Psicolaboral']);
                 const hasCheck = !!f['CHECK FINAL'];
                 const fechaMov = f['Última modificación'] || '';
-                const dias = fechaMov ? Math.floor((now - new Date(fechaMov).getTime()) / 86400000) : 0;
+                const diasSinMov = fechaMov ? Math.floor((now - new Date(fechaMov).getTime()) / 86400000) : 0;
+                const plazoMaximo = f['Plazo Máximo'] || '';
+                const diasParaPlazo = plazoMaximo ? Math.floor((new Date(plazoMaximo).getTime() - now) / 86400000) : null;
                 let progreso = 20;
                 if (hasDocs) progreso += 25;
                 if (hasInforme) progreso += 20;
@@ -121,10 +125,12 @@ export function devApiPlugin(): Plugin {
                   estado_documental: hasDocs ? 'COMPLETO' : 'PENDIENTE',
                   estado_evaluacion: hasInforme ? 'COMPLETA' : 'PENDIENTE',
                   estado_entrevista: 'PENDIENTE', estado_cierre: hasCheck ? 'CERRADO' : 'PENDIENTE',
-                  estado_general: computeEstadoGeneral(hasDocs, hasInforme, hasCheck, dias),
-                  progreso, dias_sin_movimiento: dias,
+                  estado_general: computeEstadoGeneral(hasDocs, hasInforme, hasCheck, diasParaPlazo),
+                  progreso, dias_sin_movimiento: diasSinMov,
                   fecha_inicio: f['Fecha de Inicio'] || '',
                   fecha_ultimo_movimiento: fechaMov,
+                  plazo_maximo: plazoMaximo,
+                  dias_para_plazo: diasParaPlazo,
                   especialista: f['Especialista-1'] || '',
                 };
               }).filter((p: any) => p.id);
