@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 import { KPICard } from '../components/shared/KPICard';
 import { encuestasService } from '../data/encuestasService';
+import { generatePDFReport } from '../utils/pdfReport';
 import type { Encuesta } from '../types';
 
 const TT: React.CSSProperties = {
@@ -110,6 +111,39 @@ export const Encuestas: React.FC = () => {
   };
   const sortInd = (key: SortKey) => sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
 
+  const handleDownloadPDF = () => {
+    const mesLabel = filterMes ? (MES_LABELS[filterMes] || filterMes) : 'Todos los meses';
+    const tipoLabel = filterTipo || 'Todos los tipos';
+    generatePDFReport({
+      title: 'Informe de Encuestas de Satisfacción',
+      subtitle: 'ATS Codelco | Transearch',
+      filterDescription: `${mesLabel} · ${tipoLabel}`,
+      kpis: [
+        { label: 'Total Enviadas', value: totalEnviadas.toLocaleString() },
+        { label: 'Contestadas', value: totalContestadas.toLocaleString() },
+        { label: 'No Contestadas', value: totalNoContestadas.toLocaleString() },
+        { label: '% Respuesta', value: `${pctGlobal}%` },
+      ],
+      tables: [
+        {
+          title: 'Detalle por Especialista',
+          headers: ['Especialista', 'Contestadas', 'No Contestadas', 'Total Enviadas', '% Respuesta'],
+          rows: sorted.map(r => [r.especialista, r.contestadas, r.no_contestadas, r.total_enviadas, `${r.porcentaje}%`]),
+        },
+        {
+          title: 'Top Performers',
+          headers: ['#', 'Especialista', '% Respuesta'],
+          rows: top5.map((r, i) => [i + 1, r.especialista, `${r.porcentaje}%`]),
+        },
+        {
+          title: 'Necesitan Atención',
+          headers: ['#', 'Especialista', '% Respuesta'],
+          rows: bottom5.map((r, i) => [i + 1, r.especialista, `${r.porcentaje}%`]),
+        },
+      ],
+    });
+  };
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Filters */}
@@ -132,6 +166,10 @@ export const Encuestas: React.FC = () => {
         <span className="ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>
           {rows.length} especialistas · {totalEnviadas.toLocaleString()} encuestas
         </span>
+        <button onClick={handleDownloadPDF}
+          style={{ background: 'var(--primary)', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 14 }}>&#8595;</span> Descargar PDF
+        </button>
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>

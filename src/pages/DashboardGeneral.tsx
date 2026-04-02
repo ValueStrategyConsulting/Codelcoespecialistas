@@ -7,6 +7,7 @@ import { KPICard } from '../components/shared/KPICard';
 import { EstadoGeneralBadge, DocStatusBadge } from '../components/shared/StatusBadge';
 import { ESTADO_COLORS, ESTADO_LABELS, isRisk } from '../utils/calculations';
 import { GlobalFilters, defaultGlobalFilters, applyGlobalFilters } from '../components/shared/GlobalFilters';
+import { generatePDFReport } from '../utils/pdfReport';
 import type { GlobalFilterValues } from '../components/shared/GlobalFilters';
 import type { EstadoGeneral } from '../types';
 
@@ -69,9 +70,63 @@ export const DashboardGeneral: React.FC = () => {
     [data],
   );
 
+  const handleDownloadPDF = () => {
+    const filterParts: string[] = [];
+    if (gf.division) filterParts.push(gf.division);
+    if (gf.especialista) filterParts.push(gf.especialista);
+    if (gf.fechaDesde || gf.fechaHasta) filterParts.push(`${gf.fechaDesde || '...'} a ${gf.fechaHasta || '...'}`);
+    const filterDesc = filterParts.length > 0 ? filterParts.join(' · ') : 'Sin filtros aplicados';
+
+    generatePDFReport({
+      title: 'Informe Dashboard General',
+      subtitle: 'ATS Codelco | Transearch',
+      filterDescription: filterDesc,
+      kpis: [
+        { label: 'Total Procesos', value: kpis.total },
+        { label: 'Avance Global', value: `${kpis.avance}%` },
+        { label: 'Docs Completos', value: `${kpis.docs}%` },
+        { label: 'En Riesgo', value: `${kpis.riesgo}%` },
+        { label: 'Cerrados', value: `${kpis.cerrados}%` },
+      ],
+      tables: [
+        {
+          title: 'Distribución por Estado General',
+          headers: ['Estado', 'Cantidad'],
+          rows: estadoData.map(e => [e.name, e.value]),
+        },
+        {
+          title: 'Avance Promedio por División',
+          headers: ['División', '% Avance'],
+          rows: divisionData.map(d => [d.name, `${d.value}%`]),
+        },
+        {
+          title: 'Procesos por Categoría',
+          headers: ['Categoría', 'Cantidad'],
+          rows: categoriaData.map(c => [c.name, c.value]),
+        },
+        ...(criticalProcesses.length > 0 ? [{
+          title: 'Procesos en Riesgo',
+          headers: ['ID', 'Cargo', 'Candidato', 'Estado', 'Días s/mov.', 'Documental', 'Evaluación'],
+          rows: criticalProcesses.map(p => [
+            p.id, p.cargo, p.nombre,
+            ESTADO_LABELS[p.estado_general],
+            p.dias_sin_movimiento,
+            p.estado_documental,
+            p.estado_evaluacion,
+          ]),
+        }] : []),
+      ],
+    });
+  };
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <GlobalFilters procesos={procesos} filters={gf} onChange={setGf} />
+      <GlobalFilters procesos={procesos} filters={gf} onChange={setGf}>
+        <button onClick={handleDownloadPDF}
+          style={{ background: 'var(--primary)', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+          <span style={{ fontSize: 14 }}>&#8595;</span> Descargar PDF
+        </button>
+      </GlobalFilters>
       <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
 
         {/* KPIs */}
