@@ -7,6 +7,7 @@ interface AppState {
   error: string | null;
   activePage: PageId;
   selectedProceso: Proceso | null;
+  dataSource: 'airtable' | 'static';
 
   loadProcesos: () => Promise<void>;
   setActivePage: (page: PageId) => void;
@@ -19,16 +20,34 @@ export const useStore = create<AppState>((set, get) => ({
   error: null,
   activePage: 'procesos',
   selectedProceso: null,
+  dataSource: 'static',
 
   loadProcesos: async () => {
     if (get().procesos.length > 0) return;
     set({ loading: true, error: null });
     try {
-      const resp = await fetch('/data/procesos.json');
-      const data: Proceso[] = await resp.json();
-      set({ procesos: data, loading: false });
+      // Try Airtable API first
+      const resp = await fetch('/api/procesos');
+      if (resp.ok) {
+        const data: Proceso[] = await resp.json();
+        if (Array.isArray(data) && data.length > 0) {
+          set({ procesos: data, loading: false, dataSource: 'airtable' });
+          return;
+        }
+      }
+      // Fallback to static JSON
+      const fallback = await fetch('/data/procesos.json');
+      const data: Proceso[] = await fallback.json();
+      set({ procesos: data, loading: false, dataSource: 'static' });
     } catch {
-      set({ error: 'Error al cargar datos.', loading: false });
+      // Last resort: try static JSON
+      try {
+        const fallback = await fetch('/data/procesos.json');
+        const data: Proceso[] = await fallback.json();
+        set({ procesos: data, loading: false, dataSource: 'static' });
+      } catch {
+        set({ error: 'Error al cargar datos.', loading: false });
+      }
     }
   },
 

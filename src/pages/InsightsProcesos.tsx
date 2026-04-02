@@ -13,7 +13,7 @@ import { useStore } from '../store/useStore';
 import { KPICard } from '../components/shared/KPICard';
 import { GlobalFilters, defaultGlobalFilters, applyGlobalFilters } from '../components/shared/GlobalFilters';
 import type { GlobalFilterValues } from '../components/shared/GlobalFilters';
-import type { Proceso } from '../types';
+import type { Proceso, OnePageEntry as RealOnePageEntry } from '../types';
 
 /* ── Tooltip style (dark theme) ── */
 const TOOLTIP_STYLE: React.CSSProperties = {
@@ -123,11 +123,49 @@ const ChartCard: React.FC<{ title: string; children: React.ReactNode }> = ({ tit
   </div>
 );
 
+/* ── Convert real OnePage entries to local format ── */
+function realToLocal(entries: RealOnePageEntry[]): OnePageEntry[] {
+  return entries.map(e => {
+    const competencias: Record<string, number> = {};
+    let hasData = false;
+    // Merge sellos + valores into competencias
+    for (const [key, val] of Object.entries(e.sellos)) {
+      if (val != null) { competencias[key] = val; hasData = true; }
+    }
+    for (const [key, val] of Object.entries(e.valores)) {
+      if (val != null) { competencias[key] = val; hasData = true; }
+    }
+    return {
+      nombre: e.nombre,
+      rut: '',
+      cargo: '',
+      categoria: e.categoria,
+      hasOnePage: hasData,
+      competencias,
+    };
+  });
+}
+
 /* ── Main page component ── */
 export const InsightsProcesos: React.FC = () => {
   const procesos = useStore((s) => s.procesos);
   const [gf, setGf] = useState<GlobalFilterValues>({ ...defaultGlobalFilters });
   const [cargoFilter, setCargoFilter] = useState('');
+  const [realOnePage, setRealOnePage] = useState<RealOnePageEntry[] | null>(null);
+  const [dataSourceLabel, setDataSourceLabel] = useState('mock');
+
+  // Try to fetch real OnePage data
+  React.useEffect(() => {
+    fetch('/api/onepage')
+      .then(r => r.ok ? r.json() : null)
+      .then((data: RealOnePageEntry[] | null) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setRealOnePage(data);
+          setDataSourceLabel('Airtable OnePage');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const filteredProcesos = useMemo(() => applyGlobalFilters(procesos, gf), [procesos, gf]);
 
@@ -141,7 +179,27 @@ export const InsightsProcesos: React.FC = () => {
     [filteredProcesos, cargoFilter],
   );
 
-  const onePageData = useMemo(() => generateOnePageData(finalProcesos), [finalProcesos]);
+  // Use real OnePage if available, otherwise mock
+  const onePageData = useMemo(() => {
+    if (realOnePage && realOnePage.length > 0) {
+      // Enrich real data with cargo from procesos
+      const proMap = new Map<string, Proceso>();
+      for (const p of finalProcesos) {
+        const key = p.correo?.toLowerCase();
+        if (key) proMap.set(key, p);
+      }
+      const enriched = realOnePage
+        .map(e => {
+          const match = proMap.get(e.email?.toLowerCase());
+          return { ...e, nombre: e.nombre || match?.nombre || '', cargo: match?.cargo || '' };
+        })
+        .filter(e => !cargoFilter || e.cargo === cargoFilter);
+      const local = realToLocal(enriched);
+      // Set cargo from enriched data
+      return local.map((l, i) => ({ ...l, cargo: enriched[i]?.cargo || '' }));
+    }
+    return generateOnePageData(finalProcesos);
+  }, [realOnePage, finalProcesos, cargoFilter]);
 
   /* ── Derived stats ── */
   const stats = useMemo(() => {

@@ -5,7 +5,7 @@ import {
 import { KPICard } from '../components/shared/KPICard';
 import { encuestasService } from '../data/encuestasService';
 import { generatePDFReport } from '../utils/pdfReport';
-import type { Encuesta } from '../types';
+import type { Encuesta, EncuestaCalidad } from '../types';
 
 const TT: React.CSSProperties = {
   backgroundColor: '#1e293b', border: '1px solid #1f2937', borderRadius: 8,
@@ -62,6 +62,38 @@ export const Encuestas: React.FC = () => {
   const [filterTipo, setFilterTipo] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('porcentaje');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  // Real Airtable encuestas de calidad
+  const [encuestasCalidad, setEncuestasCalidad] = useState<EncuestaCalidad[]>([]);
+  const [loadingCalidad, setLoadingCalidad] = useState(false);
+
+  React.useEffect(() => {
+    setLoadingCalidad(true);
+    fetch('/api/encuestas')
+      .then(r => r.ok ? r.json() : [])
+      .then((data: EncuestaCalidad[]) => setEncuestasCalidad(Array.isArray(data) ? data : []))
+      .catch(() => setEncuestasCalidad([]))
+      .finally(() => setLoadingCalidad(false));
+  }, []);
+
+  // Aggregate calidad by especialista
+  const calidadByEsp = useMemo(() => {
+    const map = new Map<string, { count: number; sumInf: number; countInf: number; sumDoc: number; countDoc: number }>();
+    for (const e of encuestasCalidad) {
+      if (!e.especialista) continue;
+      const entry = map.get(e.especialista) || { count: 0, sumInf: 0, countInf: 0, sumDoc: 0, countDoc: 0 };
+      entry.count++;
+      if (e.puntaje_informes != null) { entry.sumInf += e.puntaje_informes; entry.countInf++; }
+      if (e.puntaje_documentos != null) { entry.sumDoc += e.puntaje_documentos; entry.countDoc++; }
+      map.set(e.especialista, entry);
+    }
+    return [...map.entries()].map(([esp, d]) => ({
+      especialista: esp,
+      evaluaciones: d.count,
+      promInformes: d.countInf > 0 ? Math.round((d.sumInf / d.countInf) * 10) / 10 : null,
+      promDocumentos: d.countDoc > 0 ? Math.round((d.sumDoc / d.countDoc) * 10) / 10 : null,
+    })).sort((a, b) => b.evaluaciones - a.evaluaciones);
+  }, [encuestasCalidad]);
 
   const filtered = useMemo(() => encuestasService.filterEncuestas(
     filterMes || undefined, filterTipo || undefined,
@@ -260,6 +292,46 @@ export const Encuestas: React.FC = () => {
             </ResponsiveContainer>
           </Card>
         </div>
+
+        {/* Evaluación de Calidad (datos reales Airtable) */}
+        {calidadByEsp.length > 0 && (
+          <Card title={`Evaluación de Calidad por Especialista (${encuestasCalidad.length} evaluaciones)`}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Especialista', 'Evaluaciones', 'Prom. Informes', 'Prom. Documentos'].map(h => (
+                      <th key={h} style={{ textAlign: h === 'Especialista' ? 'left' : 'right', padding: '10px 12px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {calidadByEsp.map(r => (
+                    <tr key={r.especialista} style={{ borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-elevated)'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                      <td style={{ padding: '10px 12px', color: 'var(--text)', fontWeight: 500 }}>{r.especialista}</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', textAlign: 'right' }}>{r.evaluaciones}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: r.promInformes != null ? (r.promInformes >= 4 ? 'var(--success)' : r.promInformes >= 3 ? 'var(--primary)' : 'var(--danger)') : 'var(--text-muted)' }}>
+                        {r.promInformes != null ? r.promInformes : '—'}
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: r.promDocumentos != null ? (r.promDocumentos >= 4 ? 'var(--success)' : r.promDocumentos >= 3 ? 'var(--primary)' : 'var(--danger)') : 'var(--text-muted)' }}>
+                        {r.promDocumentos != null ? r.promDocumentos : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+        {loadingCalidad && (
+          <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>
+            Cargando evaluaciones de calidad desde Airtable...
+          </div>
+        )}
 
         {/* Rankings */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>

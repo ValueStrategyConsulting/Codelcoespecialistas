@@ -56,6 +56,34 @@ export interface Encuesta {
   porcentaje: number;
 }
 
+// Real Airtable Encuesta Psico + Docs
+export interface EncuestaCalidad {
+  id: string;
+  fecha_ingreso: string;
+  especialista: string;
+  eval_informes: string;
+  puntaje_informes: number | null;
+  obs_positivas_psico: string;
+  oportunidades_psico: string;
+  eval_documentos: string;
+  puntaje_documentos: number | null;
+  fortalezas_docs: string;
+  oportunidades_docs: string;
+}
+
+// Real Airtable OnePage entry
+export interface OnePageEntry {
+  id_proceso: string;
+  email: string;
+  nombre: string;
+  fecha_evaluacion: string;
+  categoria: string;
+  resumen: string;
+  motivacion: string;
+  sellos: Record<string, number | null>;
+  valores: Record<string, number | null>;
+}
+
 export interface Alert {
   id: string;
   procesoId: string;
