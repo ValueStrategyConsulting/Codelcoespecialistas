@@ -19,6 +19,7 @@ const TT: React.CSSProperties = {
 export const DashboardGeneral: React.FC = () => {
   const procesos = useStore((s) => s.procesos);
   const [gf, setGf] = useState<GlobalFilterValues>({ ...defaultGlobalFilters });
+  const [kpiFilter, setKpiFilter] = useState<string | null>(null);
   const data = useMemo(() => applyGlobalFilters(procesos, gf), [procesos, gf]);
 
   const kpis = useMemo(() => {
@@ -64,10 +65,21 @@ export const DashboardGeneral: React.FC = () => {
     return Array.from(map, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [data]);
 
+  // Filtered data by KPI click
+  const tableData = useMemo(() => {
+    if (!kpiFilter) return data;
+    switch (kpiFilter) {
+      case 'docs': return data.filter(p => p.estado_documental === 'COMPLETO');
+      case 'riesgo': return data.filter(isRisk);
+      case 'cerrados': return data.filter(p => p.estado_general === 'CERRADO');
+      default: return data;
+    }
+  }, [data, kpiFilter]);
+
   // Risk table
   const criticalProcesses = useMemo(
-    () => data.filter(isRisk).sort((a, b) => b.dias_sin_movimiento - a.dias_sin_movimiento).slice(0, 15),
-    [data],
+    () => tableData.sort((a, b) => b.dias_sin_movimiento - a.dias_sin_movimiento).slice(0, 30),
+    [tableData],
   );
 
   const handleDownloadPDF = () => {
@@ -131,11 +143,11 @@ export const DashboardGeneral: React.FC = () => {
 
         {/* KPIs */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 16, marginBottom: 24 }}>
-          <KPICard label="Total Procesos" value={kpis.total} color="var(--primary)" />
+          <KPICard label="Total Procesos" value={kpis.total} color="var(--primary)" onClick={() => setKpiFilter(kpiFilter === 'all' ? null : 'all')} active={kpiFilter === 'all'} />
           <KPICard label="Avance Global" value={`${kpis.avance}%`} subtitle="Promedio" color="var(--primary)" />
-          <KPICard label="Docs Completos" value={`${kpis.docs}%`} color="var(--success)" />
-          <KPICard label="En Riesgo" value={`${kpis.riesgo}%`} color="var(--danger)" />
-          <KPICard label="Cerrados" value={`${kpis.cerrados}%`} color="var(--success)" />
+          <KPICard label="Docs Completos" value={`${kpis.docs}%`} color="var(--success)" onClick={() => setKpiFilter(kpiFilter === 'docs' ? null : 'docs')} active={kpiFilter === 'docs'} />
+          <KPICard label="En Riesgo" value={`${kpis.riesgo}%`} color="var(--danger)" onClick={() => setKpiFilter(kpiFilter === 'riesgo' ? null : 'riesgo')} active={kpiFilter === 'riesgo'} />
+          <KPICard label="Cerrados" value={`${kpis.cerrados}%`} color="var(--success)" onClick={() => setKpiFilter(kpiFilter === 'cerrados' ? null : 'cerrados')} active={kpiFilter === 'cerrados'} />
         </div>
 
         {/* Charts grid */}
@@ -185,7 +197,7 @@ export const DashboardGeneral: React.FC = () => {
 
         {/* Risk table */}
         {criticalProcesses.length > 0 && (
-          <Card title={`Procesos en Riesgo (${criticalProcesses.length})`}>
+          <Card title={`${kpiFilter === 'docs' ? 'Procesos con Docs Completos' : kpiFilter === 'cerrados' ? 'Procesos Cerrados' : kpiFilter === 'riesgo' ? 'Procesos en Riesgo' : 'Procesos'} (${criticalProcesses.length})`}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>

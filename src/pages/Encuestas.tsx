@@ -62,6 +62,7 @@ export const Encuestas: React.FC = () => {
   const [filterTipo, setFilterTipo] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('porcentaje');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [kpiFilter, setKpiFilter] = useState<string | null>(null);
 
   // Real Airtable encuestas de calidad
   const [encuestasCalidad, setEncuestasCalidad] = useState<EncuestaCalidad[]>([]);
@@ -111,27 +112,37 @@ export const Encuestas: React.FC = () => {
     return copy;
   }, [rows, sortKey, sortDir]);
 
-  // KPIs
+  // KPIs (computed from unfiltered rows)
   const totalEnviadas = rows.reduce((s, r) => s + r.total_enviadas, 0);
   const totalContestadas = rows.reduce((s, r) => s + r.contestadas, 0);
   const totalNoContestadas = rows.reduce((s, r) => s + r.no_contestadas, 0);
   const pctGlobal = totalEnviadas > 0 ? Math.round((totalContestadas / totalEnviadas) * 100) : 0;
 
+  // Apply KPI filter to table
+  const tableRows = useMemo(() => {
+    if (!kpiFilter) return sorted;
+    switch (kpiFilter) {
+      case 'contestadas': return sorted.filter(r => r.porcentaje >= 80);
+      case 'no_contestadas': return sorted.filter(r => r.porcentaje < 50);
+      default: return sorted;
+    }
+  }, [sorted, kpiFilter]);
+
   // Chart data
   const barData = useMemo(() =>
-    sorted.map(r => ({
+    tableRows.map(r => ({
       name: r.especialista.split(' ').slice(0, 2).join(' '),
       fullName: r.especialista,
       porcentaje: r.porcentaje,
-    })), [sorted]);
+    })), [tableRows]);
 
   const stackedData = useMemo(() =>
-    sorted.map(r => ({
+    tableRows.map(r => ({
       name: r.especialista.split(' ').slice(0, 2).join(' '),
       fullName: r.especialista,
       Contestadas: r.contestadas,
       'No contestadas': r.no_contestadas,
-    })), [sorted]);
+    })), [tableRows]);
 
   // Ranking
   const top5 = useMemo(() => [...rows].sort((a, b) => b.porcentaje - a.porcentaje).slice(0, 5), [rows]);
@@ -207,9 +218,9 @@ export const Encuestas: React.FC = () => {
       <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
         {/* KPIs */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-          <KPICard label="Total Enviadas" value={totalEnviadas.toLocaleString()} color="var(--primary)" />
-          <KPICard label="Contestadas" value={totalContestadas.toLocaleString()} color="var(--success)" />
-          <KPICard label="No Contestadas" value={totalNoContestadas.toLocaleString()} color="var(--danger)" />
+          <KPICard label="Total Enviadas" value={totalEnviadas.toLocaleString()} color="var(--primary)" onClick={() => setKpiFilter(kpiFilter === 'all' ? null : 'all')} active={kpiFilter === 'all'} />
+          <KPICard label="Contestadas" value={totalContestadas.toLocaleString()} color="var(--success)" onClick={() => setKpiFilter(kpiFilter === 'contestadas' ? null : 'contestadas')} active={kpiFilter === 'contestadas'} subtitle={kpiFilter === 'contestadas' ? 'Mostrando ≥80%' : undefined} />
+          <KPICard label="No Contestadas" value={totalNoContestadas.toLocaleString()} color="var(--danger)" onClick={() => setKpiFilter(kpiFilter === 'no_contestadas' ? null : 'no_contestadas')} active={kpiFilter === 'no_contestadas'} subtitle={kpiFilter === 'no_contestadas' ? 'Mostrando <50%' : undefined} />
           <KPICard label="% Respuesta Global" value={`${pctGlobal}%`} color="var(--primary)" />
         </div>
 
@@ -234,7 +245,7 @@ export const Encuestas: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map(r => (
+                {tableRows.map(r => (
                   <tr key={r.especialista} style={{ borderBottom: '1px solid var(--border)' }}
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-elevated)'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>

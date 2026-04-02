@@ -72,6 +72,7 @@ export const Evaluaciones: React.FC = () => {
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>('candidatos');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [kpiFilter, setKpiFilter] = useState<string | null>(null);
 
   // Apply global filters
   const globalFiltered = useMemo(() => applyGlobalFilters(procesos, globalFilters), [procesos, globalFilters]);
@@ -142,9 +143,19 @@ export const Evaluaciones: React.FC = () => {
     return copy;
   }, [groups, sortKey, sortDir]);
 
+  // KPI filter on groups
+  const kpiFilteredGroups = useMemo(() => {
+    if (!kpiFilter) return sortedGroups;
+    switch (kpiFilter) {
+      case 'completas': return sortedGroups.filter(g => g.completasCount === g.candidates.length);
+      case 'riesgo': return sortedGroups.filter(g => g.riesgoCount > 0);
+      default: return sortedGroups;
+    }
+  }, [sortedGroups, kpiFilter]);
+
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(sortedGroups.length / PAGE_SIZE));
-  const paginatedGroups = sortedGroups.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(kpiFilteredGroups.length / PAGE_SIZE));
+  const paginatedGroups = kpiFilteredGroups.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   // KPI calculations
   const uniqueProcessCount = groups.length;
@@ -232,19 +243,23 @@ export const Evaluaciones: React.FC = () => {
             marginBottom: '24px',
           }}
         >
-          <KPICard label="Total Procesos" value={uniqueProcessCount} color="var(--primary)" />
+          <KPICard label="Total Procesos" value={uniqueProcessCount} color="var(--primary)" onClick={() => setKpiFilter(kpiFilter === 'all' ? null : 'all')} active={kpiFilter === 'all'} />
           <KPICard label="Total Candidatos" value={totalCandidatos} color="var(--primary)" />
           <KPICard
             label="Evaluaciones Completas"
             value={`${pctCompletas}%`}
             subtitle={`${evalCompletas} de ${totalCandidatos}`}
             color="var(--success)"
+            onClick={() => { setKpiFilter(kpiFilter === 'completas' ? null : 'completas'); setPage(0); }}
+            active={kpiFilter === 'completas'}
           />
           <KPICard
             label="En Riesgo"
             value={`${pctRiesgo}%`}
             subtitle={`${enRiesgoCount} candidatos`}
             color="var(--danger)"
+            onClick={() => { setKpiFilter(kpiFilter === 'riesgo' ? null : 'riesgo'); setPage(0); }}
+            active={kpiFilter === 'riesgo'}
           />
         </div>
 
