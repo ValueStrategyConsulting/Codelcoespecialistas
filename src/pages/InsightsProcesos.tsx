@@ -230,9 +230,11 @@ export const InsightsProcesos: React.FC = () => {
   /* ── Bar chart data: Recomendados vs No Recomendados ── */
   const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
+  const hasDateFilter = !!(gf.fechaDesde || gf.fechaHasta);
+
   const recBarData = useMemo(() => {
-    if (cargoFilter) {
-      // simple 2-bar chart
+    if (cargoFilter || hasDateFilter) {
+      // simple 2-bar chart when filtered by cargo or date
       return [
         { name: 'Recomendado', value: stats.recomendados },
         { name: 'No Recomendado', value: stats.noRecomendados },
@@ -261,7 +263,7 @@ export const InsightsProcesos: React.FC = () => {
       };
     })
       .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
-  }, [onePageData, cargoFilter, stats]);
+  }, [onePageData, cargoFilter, hasDateFilter, stats]);
 
   /* ── Competencias más bajas (No Recomendados con OnePage) ── */
   const lowCompetencies = useMemo(() => {
@@ -405,8 +407,8 @@ export const InsightsProcesos: React.FC = () => {
         {/* Block 2: Recomendados vs No Recomendados chart */}
         {stats.total > 0 && (
           <div style={{ marginBottom: 16 }}>
-            {cargoFilter ? (
-              <ChartCard title="Recomendados vs No Recomendados">
+            {(cargoFilter || hasDateFilter) ? (
+              <ChartCard title={`Recomendados vs No Recomendados${hasDateFilter ? ` (${gf.fechaDesde || '...'} a ${gf.fechaHasta || '...'})` : ''}`}>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={recBarData} margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" horizontal={false} />
