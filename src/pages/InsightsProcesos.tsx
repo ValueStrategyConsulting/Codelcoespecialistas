@@ -198,13 +198,18 @@ export const InsightsProcesos: React.FC = () => {
           const match = emailMap.get(e.email?.toLowerCase()) || idMap.get(e.id_proceso);
           return { ...e, nombre: e.nombre || match?.nombre || '', cargo: match?.cargo || '' };
         })
-        .filter(e => !cargoFilter || e.cargo === cargoFilter);
+        .filter(e => {
+          if (cargoFilter && e.cargo !== cargoFilter) return false;
+          if (gf.fechaDesde && e.fecha_evaluacion && e.fecha_evaluacion < gf.fechaDesde) return false;
+          if (gf.fechaHasta && e.fecha_evaluacion && e.fecha_evaluacion > gf.fechaHasta) return false;
+          return true;
+        });
       const local = realToLocal(enriched);
       // Set cargo from enriched data
       return local.map((l, i) => ({ ...l, cargo: enriched[i]?.cargo || '' }));
     }
     return generateOnePageData(finalProcesos);
-  }, [realOnePage, finalProcesos, cargoFilter]);
+  }, [realOnePage, finalProcesos, cargoFilter, gf.fechaDesde, gf.fechaHasta]);
 
   /* ── Derived stats ── */
   const stats = useMemo(() => {
