@@ -565,6 +565,12 @@ function AIAnalysisSection({ onePageData, stats, lowCompetencies, cargoFilter, g
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Clear analysis when filters change
+  const filterKey = `${cargoFilter}|${globalFilters.fechaDesde}|${globalFilters.fechaHasta}|${globalFilters.division}|${globalFilters.especialista}|${stats.total}`;
+  React.useEffect(() => {
+    setAnalysis(null);
+  }, [filterKey]);
+
   const generateAnalysis = useCallback(() => {
     if (stats.noRecomendados === 0) {
       setAnalysis('No hay candidatos No Recomendados en el filtro actual para analizar.');
