@@ -62,7 +62,8 @@ export async function handler(_req: Request): Promise<Response> {
       .map(rec => {
         const f = rec.fields;
         const id = f['ID'] || '';
-        if (!id) return null;
+        const nombre = f['Nombre y Apellido'] || '';
+        if (!id || !nombre) return null;
 
         const hasDocs = hasAttachments(f['Documentos']);
         const hasInforme = hasAttachments(f['Informe Psicolaboral']);

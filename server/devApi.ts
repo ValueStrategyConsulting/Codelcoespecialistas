@@ -133,7 +133,7 @@ export function devApiPlugin(): Plugin {
                   dias_para_plazo: diasParaPlazo,
                   especialista: f['Especialista-1'] || '',
                 };
-              }).filter((p: any) => p.id);
+              }).filter((p: any) => p.id && p.nombre);
               setCache('procesos', data);
             }
             res.end(JSON.stringify(data));
