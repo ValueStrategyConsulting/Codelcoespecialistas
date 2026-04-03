@@ -7,6 +7,7 @@ import {
   CartesianGrid,
   Cell,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import { useStore } from '../store/useStore';
@@ -71,6 +72,7 @@ interface OnePageEntry {
   categoria: string;
   hasOnePage: boolean;
   competencias: Record<string, number>;
+  fecha_evaluacion?: string;
 }
 
 /* ── Mock OnePage data generator ── */
@@ -104,6 +106,7 @@ function generateOnePageData(procesos: Proceso[]): OnePageEntry[] {
       categoria: p.categoria,
       hasOnePage,
       competencias,
+      fecha_evaluacion: p.fecha_inicio,
     };
   });
 }
@@ -142,6 +145,7 @@ function realToLocal(entries: RealOnePageEntry[]): OnePageEntry[] {
       categoria: e.categoria,
       hasOnePage: hasData,
       competencias,
+      fecha_evaluacion: e.fecha_evaluacion,
     };
   });
 }
@@ -182,15 +186,16 @@ export const InsightsProcesos: React.FC = () => {
   // Use real OnePage if available, otherwise mock
   const onePageData = useMemo(() => {
     if (realOnePage && realOnePage.length > 0) {
-      // Enrich real data with cargo from procesos
-      const proMap = new Map<string, Proceso>();
+      // Enrich real data with cargo from procesos (match by email first, then by id_proceso)
+      const emailMap = new Map<string, Proceso>();
+      const idMap = new Map<string, Proceso>();
       for (const p of finalProcesos) {
-        const key = p.correo?.toLowerCase();
-        if (key) proMap.set(key, p);
+        if (p.correo) emailMap.set(p.correo.toLowerCase(), p);
+        idMap.set(p.id, p);
       }
       const enriched = realOnePage
         .map(e => {
-          const match = proMap.get(e.email?.toLowerCase());
+          const match = emailMap.get(e.email?.toLowerCase()) || idMap.get(e.id_proceso);
           return { ...e, nombre: e.nombre || match?.nombre || '', cargo: match?.cargo || '' };
         })
         .filter(e => !cargoFilter || e.cargo === cargoFilter);
@@ -223,6 +228,8 @@ export const InsightsProcesos: React.FC = () => {
   }, [onePageData]);
 
   /* ── Bar chart data: Recomendados vs No Recomendados ── */
+  const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
   const recBarData = useMemo(() => {
     if (cargoFilter) {
       // simple 2-bar chart
@@ -231,21 +238,29 @@ export const InsightsProcesos: React.FC = () => {
         { name: 'No Recomendado', value: stats.noRecomendados },
       ];
     }
-    // grouped by cargo (top 10)
+    // grouped by month using fecha_evaluacion
     const map = new Map<string, { rec: number; noRec: number }>();
     onePageData.forEach((d) => {
-      const entry = map.get(d.cargo) || { rec: 0, noRec: 0 };
+      const dateStr = d.fecha_evaluacion;
+      if (!dateStr) return;
+      const ym = dateStr.slice(0, 7); // YYYY-MM
+      const entry = map.get(ym) || { rec: 0, noRec: 0 };
       if (d.categoria === 'Recomendado') entry.rec += 1;
       else entry.noRec += 1;
-      map.set(d.cargo, entry);
+      map.set(ym, entry);
     });
-    return Array.from(map, ([cargo, v]) => ({
-      name: cargo.length > 35 ? cargo.slice(0, 32) + '...' : cargo,
-      Recomendado: v.rec,
-      'No Recomendado': v.noRec,
-    }))
-      .sort((a, b) => (b.Recomendado + b['No Recomendado']) - (a.Recomendado + a['No Recomendado']))
-      .slice(0, 10);
+    return Array.from(map, ([ym, v]) => {
+      const [year, month] = ym.split('-');
+      const monthIdx = parseInt(month, 10) - 1;
+      const label = `${MONTH_NAMES[monthIdx] ?? month} ${year}`;
+      return {
+        name: label,
+        sortKey: ym,
+        Recomendado: v.rec,
+        'No Recomendado': v.noRec,
+      };
+    })
+      .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
   }, [onePageData, cargoFilter, stats]);
 
   /* ── Competencias más bajas (No Recomendados con OnePage) ── */
@@ -317,13 +332,14 @@ export const InsightsProcesos: React.FC = () => {
           }}
         >
           Este es un resumen en base a las evaluaciones registradas.
+          En riesgo: procesos con plazo máximo próximo a vencer (≤5 días) o ya vencido.
         </div>
 
         {/* KPI row */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 16,
             marginBottom: 16,
           }}
@@ -340,12 +356,6 @@ export const InsightsProcesos: React.FC = () => {
             value={stats.noRecomendados}
             subtitle={`${stats.noRecPct}%`}
             color="var(--danger)"
-          />
-          <KPICard
-            label="Cobertura OnePage"
-            value={`${stats.coveragePct}%`}
-            subtitle={`${stats.withOnePage} de ${stats.total}`}
-            color="var(--warning)"
           />
         </div>
 
@@ -415,8 +425,8 @@ export const InsightsProcesos: React.FC = () => {
                 </ResponsiveContainer>
               </ChartCard>
             ) : (
-              <ChartCard title="Recomendados vs No Recomendados por Cargo (Top 10)">
-                <ResponsiveContainer width="100%" height={Math.max(280, (recBarData as any[]).length * 36)}>
+              <ChartCard title="Recomendados vs No Recomendados por Mes">
+                <ResponsiveContainer width="100%" height={280}>
                   <BarChart
                     data={recBarData}
                     layout="horizontal"
@@ -434,6 +444,7 @@ export const InsightsProcesos: React.FC = () => {
                     />
                     <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} stroke="#1f2937" allowDecimals={false} />
                     <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(59,130,246,0.08)' }} />
+                    <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
                     <Bar dataKey="Recomendado" fill="var(--success)" radius={[4, 4, 0, 0]} barSize={16} />
                     <Bar dataKey="No Recomendado" fill="var(--danger)" radius={[4, 4, 0, 0]} barSize={16} />
                   </BarChart>
@@ -446,7 +457,7 @@ export const InsightsProcesos: React.FC = () => {
         {/* Block 3: Competencias más bajas (No Recomendados) */}
         {lowCompetencies.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <ChartCard title="Competencias m&aacute;s bajas en candidatos No Recomendados">
+            <ChartCard title="Competencias más bajas en candidatos No Recomendados">
               <ResponsiveContainer width="100%" height={lowCompetencies.length * 38 + 20}>
                 <BarChart
                   data={lowCompetencies}
@@ -534,6 +545,7 @@ export const InsightsProcesos: React.FC = () => {
           stats={stats}
           lowCompetencies={lowCompetencies}
           cargoFilter={cargoFilter}
+          globalFilters={gf}
         />
       </div>
     </div>
@@ -541,11 +553,12 @@ export const InsightsProcesos: React.FC = () => {
 };
 
 /* ── AI Analysis Section ── */
-function AIAnalysisSection({ onePageData, stats, lowCompetencies, cargoFilter }: {
+function AIAnalysisSection({ onePageData, stats, lowCompetencies, cargoFilter, globalFilters }: {
   onePageData: OnePageEntry[];
   stats: { total: number; recomendados: number; noRecomendados: number; recPct: number; noRecPct: number; withOnePage: number; coveragePct: number };
   lowCompetencies: { name: string; avg: number }[];
   cargoFilter: string;
+  globalFilters: GlobalFilterValues;
 }) {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -581,9 +594,13 @@ function AIAnalysisSection({ onePageData, stats, lowCompetencies, cargoFilter }:
       const moderate = compAvgs.filter(c => c.avg >= 2.5 && c.avg < 3.5);
       const strong = compAvgs.filter(c => c.avg >= 3.5);
 
+      const dateFrom = globalFilters.fechaDesde || 'inicio';
+      const dateTo = globalFilters.fechaHasta || 'hoy';
+      const dateRange = (globalFilters.fechaDesde || globalFilters.fechaHasta) ? ` | Rango: ${dateFrom} a ${dateTo}` : '';
+
       let text = `ANÁLISIS DE CANDIDATOS NO RECOMENDADOS\n`;
       text += `${'─'.repeat(50)}\n\n`;
-      text += `Período analizado: ${cargoLabel}\n`;
+      text += `Período analizado: ${cargoLabel}${dateRange}\n`;
       text += `Total evaluados: ${stats.total} candidatos\n`;
       text += `No Recomendados: ${stats.noRecomendados} (${stats.noRecPct}%)\n`;
       text += `Con datos de evaluación: ${withData.length} de ${noRec.length}\n\n`;
@@ -649,7 +666,7 @@ function AIAnalysisSection({ onePageData, stats, lowCompetencies, cargoFilter }:
       setAnalysis(text);
       setLoading(false);
     }, 1500);
-  }, [onePageData, stats, lowCompetencies, cargoFilter]);
+  }, [onePageData, stats, lowCompetencies, cargoFilter, globalFilters]);
 
   return (
     <div style={{ marginBottom: 16 }}>

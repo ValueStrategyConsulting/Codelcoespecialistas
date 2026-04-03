@@ -140,11 +140,11 @@ export const Procesos: React.FC = () => {
     { key: 'cargo', label: 'Cargo', width: '160px' },
     { key: 'nombre', label: 'Candidato', width: '180px' },
     { key: 'rut', label: 'RUT', width: '110px' },
-    { key: 'division' as SortKey, label: 'Divisi\u00f3n', width: '120px' },
+    { key: 'division' as SortKey, label: 'División', width: '120px' },
     { key: 'especialista', label: 'Especialista', width: '150px' },
-    { key: 'categoria', label: 'Categor\u00eda', width: '110px' },
+    { key: 'categoria', label: 'Categoría', width: '110px' },
     { key: 'estado_documental', label: 'Documental', width: '100px' },
-    { key: 'estado_evaluacion', label: 'Evaluaci\u00f3n', width: '100px' },
+    { key: 'estado_evaluacion', label: 'Evaluación', width: '100px' },
     { key: 'estado_general', label: 'Estado', width: '120px' },
     { key: 'progreso', label: '% Avance', width: '120px' },
     { key: 'observacion_control', label: 'Observaciones', width: '160px' },
@@ -187,7 +187,7 @@ export const Procesos: React.FC = () => {
           }}
           style={selectStyle}
         >
-          <option value="">Todas las categor\u00edas</option>
+          <option value="">Todas las categorías</option>
           {categorias.map((c) => (
             <option key={c} value={c}>
               {c}
@@ -280,12 +280,12 @@ export const Procesos: React.FC = () => {
                 {/* RUT */}
                 <td style={{ padding: '10px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 12 }}>{p.rut}</td>
                 {/* División */}
-                <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>{p.division || '\u2014'}</td>
+                <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>{p.division || '—'}</td>
                 {/* Especialista */}
                 <td style={{ padding: '10px', color: 'var(--text-secondary)' }}>{p.especialista}</td>
                 {/* Categoría */}
                 <td style={{ padding: '10px' }}>
-                  {p.categoria ? <StatusBadge status={p.categoria} color={p.categoria === 'Recomendado' ? 'var(--success)' : p.categoria === 'No Recomendado' ? 'var(--danger)' : 'var(--text-muted)'} /> : <span style={{ color: 'var(--text-muted)' }}>{'\u2014'}</span>}
+                  {p.categoria ? <StatusBadge status={p.categoria} color={p.categoria === 'Recomendado' ? 'var(--success)' : p.categoria === 'No Recomendado' ? 'var(--danger)' : 'var(--text-muted)'} /> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                 </td>
                 {/* Documental */}
                 <td style={{ padding: '10px' }}><DocStatusBadge complete={p.estado_documental === 'COMPLETO'} /></td>
@@ -297,7 +297,7 @@ export const Procesos: React.FC = () => {
                 <td style={{ padding: '10px', minWidth: 100 }}><ProgressBar value={p.progreso} /></td>
                 {/* Observaciones */}
                 <td style={{ padding: '10px', color: 'var(--text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.observacion_control}>
-                  {p.observacion_control || '\u2014'}
+                  {p.observacion_control || '—'}
                 </td>
               </tr>
             ))}
@@ -326,7 +326,7 @@ export const Procesos: React.FC = () => {
             Anterior
           </button>
           <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            P\u00e1gina {safePage + 1} de {totalPages}
+            Página {safePage + 1} de {totalPages}
           </span>
           <button
             disabled={safePage >= totalPages - 1}
@@ -375,7 +375,7 @@ const DetailDrawer: React.FC<{ proceso: Proceso; onClose: () => void }> = ({ pro
           top: 0,
           right: 0,
           bottom: 0,
-          width: '450px',
+          width: 'min(450px, 100vw - 20px)',
           maxWidth: '100vw',
           backgroundColor: 'var(--bg-base)',
           borderLeft: '1px solid var(--border)',
@@ -420,12 +420,12 @@ const DetailDrawer: React.FC<{ proceso: Proceso; onClose: () => void }> = ({ pro
         {/* Content */}
         <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
           {/* Info section */}
-          <Section title="Informaci\u00f3n">
+          <Section title="Información">
             <InfoRow label="RUT" value={p.rut} />
             <InfoRow label="Correo" value={p.correo} />
-            <InfoRow label="Tel\u00e9fono" value={p.telefono} />
-            <InfoRow label="Divisi\u00f3n" value={p.division} />
-            <InfoRow label="Categor\u00eda" value={p.categoria} />
+            <InfoRow label="Teléfono" value={p.telefono} />
+            <InfoRow label="División" value={p.division} />
+            <InfoRow label="Categoría" value={p.categoria} />
           </Section>
 
           {/* Status breakdown */}
@@ -433,7 +433,7 @@ const DetailDrawer: React.FC<{ proceso: Proceso; onClose: () => void }> = ({ pro
             <StatusRow label="Documental">
               <DocStatusBadge complete={p.estado_documental === 'COMPLETO'} />
             </StatusRow>
-            <StatusRow label="Evaluaci\u00f3n">
+            <StatusRow label="Evaluación">
               <DocStatusBadge complete={p.estado_evaluacion === 'COMPLETA'} />
             </StatusRow>
             <StatusRow label="Entrevista">
@@ -457,10 +457,30 @@ const DetailDrawer: React.FC<{ proceso: Proceso; onClose: () => void }> = ({ pro
               <EstadoGeneralBadge estado={p.estado_general} />
               {p.dias_sin_movimiento > 0 && (
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  {p.dias_sin_movimiento} d\u00edas sin movimiento
+                  {p.dias_sin_movimiento} días sin movimiento
                 </span>
               )}
             </div>
+            {p.estado_general === 'EN_RIESGO' && (
+              <p style={{ fontSize: '11px', color: 'var(--danger)', marginTop: '8px', lineHeight: 1.4 }}>
+                Proceso con plazo máximo próximo a vencer (≤5 días) o vencido
+              </p>
+            )}
+          </Section>
+
+          {/* Plazo */}
+          <Section title="Plazo">
+            <InfoRow label="Plazo máximo" value={p.plazo_maximo || '—'} />
+            <InfoRow
+              label="Días para plazo"
+              value={
+                p.dias_para_plazo == null
+                  ? '—'
+                  : p.dias_para_plazo <= 0
+                    ? 'Vencido'
+                    : `${p.dias_para_plazo} días`
+              }
+            />
           </Section>
 
           {/* Observaciones */}
@@ -524,7 +544,7 @@ const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) =
     }}
   >
     <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{label}</span>
-    <span style={{ color: 'var(--text)', fontSize: '13px', textAlign: 'right' }}>{value || '\u2014'}</span>
+    <span style={{ color: 'var(--text)', fontSize: '13px', textAlign: 'right' }}>{value || '—'}</span>
   </div>
 );
 

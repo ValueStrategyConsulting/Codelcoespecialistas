@@ -122,8 +122,8 @@ export const Encuestas: React.FC = () => {
   const tableRows = useMemo(() => {
     if (!kpiFilter) return sorted;
     switch (kpiFilter) {
-      case 'contestadas': return sorted.filter(r => r.porcentaje >= 80);
-      case 'no_contestadas': return sorted.filter(r => r.porcentaje < 50);
+      case 'contestadas': return sorted.filter(r => r.porcentaje >= 60);
+      case 'no_contestadas': return sorted.filter(r => r.porcentaje < 55);
       default: return sorted;
     }
   }, [sorted, kpiFilter]);
@@ -143,6 +143,22 @@ export const Encuestas: React.FC = () => {
       Contestadas: r.contestadas,
       'No contestadas': r.no_contestadas,
     })), [tableRows]);
+
+  // Monthly data for bar chart
+  const monthlyData = useMemo(() => {
+    const map = new Map<string, { contestadas: number; no_contestadas: number }>();
+    for (const e of filtered) {
+      const entry = map.get(e.mes) || { contestadas: 0, no_contestadas: 0 };
+      entry.contestadas += e.contestadas;
+      entry.no_contestadas += e.no_contestadas;
+      map.set(e.mes, entry);
+    }
+    return Array.from(map, ([mes, d]) => ({
+      name: MES_LABELS[mes] || mes,
+      Contestadas: d.contestadas,
+      'No contestadas': d.no_contestadas,
+    })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [filtered]);
 
   // Ranking
   const top5 = useMemo(() => [...rows].sort((a, b) => b.porcentaje - a.porcentaje).slice(0, 5), [rows]);
@@ -218,9 +234,9 @@ export const Encuestas: React.FC = () => {
       <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
         {/* KPIs */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-          <KPICard label="Total Enviadas" value={totalEnviadas.toLocaleString()} color="var(--primary)" onClick={() => setKpiFilter(kpiFilter === 'all' ? null : 'all')} active={kpiFilter === 'all'} />
-          <KPICard label="Contestadas" value={totalContestadas.toLocaleString()} color="var(--success)" onClick={() => setKpiFilter(kpiFilter === 'contestadas' ? null : 'contestadas')} active={kpiFilter === 'contestadas'} subtitle={kpiFilter === 'contestadas' ? 'Mostrando ≥80%' : undefined} />
-          <KPICard label="No Contestadas" value={totalNoContestadas.toLocaleString()} color="var(--danger)" onClick={() => setKpiFilter(kpiFilter === 'no_contestadas' ? null : 'no_contestadas')} active={kpiFilter === 'no_contestadas'} subtitle={kpiFilter === 'no_contestadas' ? 'Mostrando <50%' : undefined} />
+          <KPICard label="Total Enviadas" value={totalEnviadas.toLocaleString()} color="var(--primary)" />
+          <KPICard label="Contestadas" value={totalContestadas.toLocaleString()} color="var(--success)" onClick={() => setKpiFilter(kpiFilter === 'contestadas' ? null : 'contestadas')} active={kpiFilter === 'contestadas'} subtitle={kpiFilter === 'contestadas' ? 'Mostrando ≥60%' : undefined} />
+          <KPICard label="No Contestadas" value={totalNoContestadas.toLocaleString()} color="var(--danger)" onClick={() => setKpiFilter(kpiFilter === 'no_contestadas' ? null : 'no_contestadas')} active={kpiFilter === 'no_contestadas'} subtitle={kpiFilter === 'no_contestadas' ? 'Mostrando <55%' : undefined} />
           <KPICard label="% Respuesta Global" value={`${pctGlobal}%`} color="var(--primary)" />
         </div>
 
@@ -271,7 +287,7 @@ export const Encuestas: React.FC = () => {
         </Card>
 
         {/* Charts */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16, marginTop: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginTop: 16 }}>
           {/* % Respuesta por especialista */}
           <Card title="% Respuesta por Especialista">
             <ResponsiveContainer width="100%" height={320}>
@@ -299,6 +315,22 @@ export const Encuestas: React.FC = () => {
                 <Tooltip contentStyle={TT} labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName || ''} />
                 <Bar dataKey="Contestadas" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
                 <Bar dataKey="No contestadas" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+
+        {/* Encuestas por mes */}
+        <div style={{ marginTop: 16 }}>
+          <Card title="Encuestas por Mes">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={monthlyData} margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} stroke="#1f2937" />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} stroke="#1f2937" />
+                <Tooltip contentStyle={TT} />
+                <Bar dataKey="Contestadas" fill="#10b981" radius={[4, 4, 0, 0]} barSize={28} />
+                <Bar dataKey="No contestadas" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </Card>

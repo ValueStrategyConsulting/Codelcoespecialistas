@@ -143,7 +143,7 @@ export const DashboardGeneral: React.FC = () => {
 
         {/* KPIs */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 16, marginBottom: 24 }}>
-          <KPICard label="Total Procesos" value={kpis.total} color="var(--primary)" onClick={() => setKpiFilter(kpiFilter === 'all' ? null : 'all')} active={kpiFilter === 'all'} />
+          <KPICard label="Total Procesos" value={kpis.total} color="var(--primary)" />
           <KPICard label="Avance Global" value={`${kpis.avance}%`} subtitle="Promedio" color="var(--primary)" />
           <KPICard label="Docs Completos" value={`${kpis.docs}%`} color="var(--success)" onClick={() => setKpiFilter(kpiFilter === 'docs' ? null : 'docs')} active={kpiFilter === 'docs'} />
           <KPICard label="En Riesgo" value={`${kpis.riesgo}%`} color="var(--danger)" onClick={() => setKpiFilter(kpiFilter === 'riesgo' ? null : 'riesgo')} active={kpiFilter === 'riesgo'} />
